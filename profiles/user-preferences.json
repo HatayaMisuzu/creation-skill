@@ -1,0 +1,9 @@
+{
+  "default_language": "zh",
+  "reply_format": "immersive_default",
+  "romance_level": "slow-burn",
+  "action_detail": "low",
+  "narration_style": "light_novel",
+  "meta_tolerance": "low",
+  "world_simulation_visibility": "frontstage-only"
+}

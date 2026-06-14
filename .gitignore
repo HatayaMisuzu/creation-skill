@@ -1,0 +1,24 @@
+# Runtime outputs and user materials
+character-cards/
+materials/
+project-packs/
+work/
+
+# Python caches and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environment and secrets
+.env
+.env.*
+*.key
+*.pem
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
