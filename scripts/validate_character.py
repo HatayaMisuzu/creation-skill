@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate v10 CHARACTER.md and PROJECT.md outputs."""
+"""Validate 1.0.0 CHARACTER.md and PROJECT.md outputs."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def check_runtime_files(root: Path, strict: bool, development_mode: str) -> tupl
         if (root / rel).exists():
             passes.append(f"{rel} present")
         else:
-            warns.append(f"missing v10 sidecar: {rel}")
+            warns.append(f"missing 1.0.0 sidecar: {rel}")
     memory = root / "MEMORY.md"
     development = root / "DEVELOPMENT.md"
     if development_mode in {"long-term-development", "project-development", "session-summary"}:
@@ -140,9 +140,9 @@ def check_character(path: Path, strict_dialogue: bool) -> tuple[list[str], list[
         passes.append("standard sections 1-28 complete")
     missing_vitality = [str(i) for i in range(29, 43) if i not in sections]
     if missing_vitality:
-        warns.append("missing v10 vitality sections: " + ", ".join(missing_vitality))
+        warns.append("missing 1.0.0 vitality sections: " + ", ".join(missing_vitality))
     else:
-        passes.append("v10 vitality sections 29-42 complete")
+        passes.append("1.0.0 vitality sections 29-42 complete")
 
     if re.search(r"<[^>\n]+>|\[TODO\]|TODO|待填|未填写|�", text, re.I):
         fails.append("unfilled placeholders or mojibake found")

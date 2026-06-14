@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a model-first v10 CHARACTER.md package from an evidence file.
+"""Render a model-first 1.0.0 CHARACTER.md package from an evidence file.
 
 The script is intentionally conservative. It creates a clean, runnable starter
 package from structured evidence, but the skill remains model-led: a model or
@@ -411,7 +411,7 @@ def render_character(args: argparse.Namespace, pack: dict[str, Any], material_pa
         f"response_language: {args.response_language}",
         f"safety_boundary: {args.safety_boundary}",
         f"development_mode: {args.development_mode}",
-        "version: 1.0",
+        "version: 1.0.0",
         "---",
         "",
         f"# {args.name} 通用角色档案",
@@ -730,7 +730,7 @@ def render_character(args: argparse.Namespace, pack: dict[str, Any], material_pa
         "",
         "| 版本 | 日期 | 改动 | 原因 | 风险 |",
         "|---|---|---|---|---|",
-        md_row(["1.0", dt.date.today().isoformat(), "生成 v10 角色包", "初始化", "需要人工继续精修高价值角色"]),
+        md_row(["1.0.0", dt.date.today().isoformat(), "生成 1.0.0 角色包", "初始化", "需要人工继续精修高价值角色"]),
     ])
 
     data = {
@@ -788,7 +788,7 @@ def archive_existing(out_dir: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render v10 universal CHARACTER.md package")
+    parser = argparse.ArgumentParser(description="Render 1.0.0 universal CHARACTER.md package")
     parser.add_argument("--evidence", required=True, help="evidence.json path")
     parser.add_argument("--out", required=True, help="Output character directory")
     parser.add_argument("--name", required=True, help="Display character name")

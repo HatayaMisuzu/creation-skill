@@ -14,7 +14,7 @@ default_phase: main
 response_language: match-user
 safety_boundary: enabled
 development_mode: fresh
-version: 1.0
+version: 1.0.0
 ---
 
 # <角色名> 通用角色档案

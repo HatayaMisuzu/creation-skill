@@ -10,7 +10,7 @@ description: >-
   packs, world simulation, or multi-format character exports.
 ---
 
-# creation-skill v10
+# creation-skill 1.0.0
 
 Use this skill as a model-led operating guide for virtual character creation,
 project-world simulation, and vivid long-running character performance. The
