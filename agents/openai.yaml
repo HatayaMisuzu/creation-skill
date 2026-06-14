@@ -1,0 +1,8 @@
+interface:
+  display_name: "Creation Skill"
+  short_description: "Build vivid, source-aware virtual character agents."
+  brand_color: "#8B5CF6"
+  default_prompt: "Use $creation-skill to create or improve a vivid, source-aware CHARACTER.md for a virtual character."
+
+policy:
+  allow_implicit_invocation: true
