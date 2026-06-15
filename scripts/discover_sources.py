@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Discover candidate sources for a virtual character profile.
 
-This script is intentionally conservative: it records user URLs and generates
-high-value search targets. When DuckDuckGo HTML is reachable it also extracts
-result links. All results are candidates only until the user confirms them.
+Results are candidates only until the user confirms them. The script favors
+project-first search and includes Chinese secondary sources such as Moegirl
+百科 for Chinese names, localized terminology, and fandom orientation.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ import argparse
 import html
 import json
 import re
-import sys
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -23,12 +22,12 @@ SEARCH_ENDPOINT = "https://duckduckgo.com/html/?q="
 
 
 def slugify(text: str) -> str:
-    value = re.sub(r"[^0-9A-Za-z\u4e00-\u9fffぁ-んァ-ン一-龯]+", "-", text.strip())
+    value = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff\u3040-\u30ff]+", "-", text.strip())
     value = re.sub(r"-+", "-", value).strip("-")
     return value.lower() or "character"
 
 
-def fetch_search(query: str, limit: int) -> list[dict]:
+def fetch_search(query: str, limit: int) -> list[dict[str, str]]:
     if limit <= 0:
         return []
     url = SEARCH_ENDPOINT + urllib.parse.quote(query)
@@ -39,7 +38,7 @@ def fetch_search(query: str, limit: int) -> list[dict]:
     except Exception:
         return []
 
-    results: list[dict] = []
+    results: list[dict[str, str]] = []
     pattern = re.compile(r'<a rel="nofollow" class="result__a" href="([^"]+)">(.*?)</a>', re.S)
     for match in pattern.finditer(body):
         href = html.unescape(match.group(1))
@@ -54,26 +53,28 @@ def fetch_search(query: str, limit: int) -> list[dict]:
     return results
 
 
-def classify_url(url: str, title: str) -> tuple[str, str, str]:
+def classify_url(url: str, title: str) -> tuple[str, str, str, str]:
     text = f"{url} {title}".lower()
     if any(x in text for x in ["google.com/search", "duckduckgo.com", "bing.com/search"]):
-        return "manual-search", "secondary", "search query placeholder; open and review before use"
+        return "manual-search", "secondary", "search query placeholder; open and review before use", "unknown"
     if any(x in text for x in ["youtube.com", "youtu.be", "bilibili.com", "nicovideo.jp"]):
-        return "video", "transcript", "possible transcript or primary scene material"
-    if any(x in text for x in ["official", "jp/", "character", "chara", "game", "anime"]):
-        return "official-page", "official", "possible official identity or profile"
-    if any(x in text for x in ["moegirl", "fandom", "wikipedia", "pixiv", "dic.pixiv", "wiki"]):
-        return "wiki", "secondary", "useful map; cross-check before canon claims"
-    if any(x in text for x in ["quote", "voice", "transcript", "script", "台词", "セリフ"]):
-        return "text", "transcript", "possible voice or dialogue evidence"
-    return "web", "secondary", "candidate background source"
+        return "video", "transcript", "possible transcript or primary scene material", "unknown"
+    if any(x in text for x in ["zh.moegirl.org.cn", "moegirl.org.cn", "萌娘百科"]):
+        return "moegirl", "secondary", "high-value Chinese ACG reference; useful for Chinese names and aliases, cross-check canon claims", "zh"
+    if any(x in text for x in ["official", "公式", "character", "chara", "game", "anime"]):
+        return "official-page", "official", "possible official identity or profile", "unknown"
+    if any(x in text for x in ["fandom", "wikipedia", "pixiv", "dic.pixiv", "wiki", "百科"]):
+        return "wiki", "secondary", "useful map; cross-check before canon claims", "unknown"
+    if any(x in text for x in ["quote", "voice", "transcript", "script", "台词", "セリフ", "ボイス"]):
+        return "text", "transcript", "possible voice or dialogue evidence", "unknown"
+    return "web", "secondary", "candidate background source", "unknown"
 
 
 def infer_project_type(work: str, character_type: str) -> str:
     text = f"{work} {character_type}".lower()
     if character_type in {"anime", "game", "novel", "vtuber", "oc", "mixed", "mascot", "npc"}:
         return character_type
-    if any(x in text for x in ["game", "手游", "ゲーム", "学マス", "idolmaster"]):
+    if any(x in text for x in ["game", "手游", "ゲーム", "idolmaster"]):
         return "game"
     if any(x in text for x in ["anime", "动画", "アニメ"]):
         return "anime"
@@ -84,14 +85,15 @@ def infer_project_type(work: str, character_type: str) -> str:
     return "mixed"
 
 
-def candidate(title: str, url: str, query: str, user_provided: bool = False, project: str = "", project_type: str = "mixed") -> dict:
-    source_type, layer, value = classify_url(url, title)
+def candidate(title: str, url: str, query: str, user_provided: bool = False, project: str = "", project_type: str = "mixed") -> dict[str, object]:
+    source_type, layer, value, language = classify_url(url, title)
     decision = "needs-user-review"
     if user_provided:
-        decision = "needs-user-review"
         layer = "user-provided"
         value = "user-provided URL; confirm intended use"
     elif layer in {"official", "transcript"}:
+        decision = "recommended"
+    elif source_type == "moegirl":
         decision = "recommended"
     elif source_type == "wiki":
         decision = "optional"
@@ -103,12 +105,22 @@ def candidate(title: str, url: str, query: str, user_provided: bool = False, pro
         "project": project,
         "project_type": project_type,
         "source_type": source_type,
-        "language": "unknown",
+        "language": language,
         "suggested_layer": layer,
         "likely_value": value,
         "risk": "unconfirmed until user review",
         "confirmed_by_user": False,
     }
+
+
+def wants_chinese(language: str) -> bool:
+    value = language.lower()
+    return value == "auto" or value.startswith(("zh", "cn", "中文", "汉语"))
+
+
+def wants_japanese(language: str, character_type: str) -> bool:
+    value = language.lower()
+    return value.startswith(("ja", "jp", "日文", "日本語")) or character_type in {"anime", "game", "vtuber"}
 
 
 def search_queries(character: str, work: str, language: str, character_type: str, mode: str = "both") -> list[str]:
@@ -122,10 +134,21 @@ def search_queries(character: str, work: str, language: str, character_type: str
             f"{base} transcript",
             f"{base} quotes",
         ])
-        if language.lower().startswith(("zh", "cn", "中文")):
-            queries.extend([f"{base} 萌娘百科", f"{base} 台词", f"{base} 剧情"])
-        if language.lower().startswith(("ja", "jp", "日")) or character_type in {"anime", "game", "vtuber"}:
-            queries.extend([f"{base} セリフ", f"{base} キャラクター", f"{base} 公式"])
+        if wants_chinese(language):
+            queries.extend([
+                f"{base} 萌娘百科",
+                f"site:zh.moegirl.org.cn {base}",
+                f"{base} 中文名",
+                f"{base} 台词",
+                f"{base} 剧情",
+            ])
+        if wants_japanese(language, character_type):
+            queries.extend([
+                f"{base} 公式",
+                f"{base} キャラクター",
+                f"{base} セリフ",
+                f"{base} ボイス",
+            ])
         if character_type == "vtuber":
             queries.extend([f"{base} official channel", f"{base} stream transcript"])
     if work and mode in {"project", "both"}:
@@ -137,27 +160,38 @@ def search_queries(character: str, work: str, language: str, character_type: str
             f"{work} unit story {character}",
             f"{work} voice collection {character}",
         ]
-        if language.lower().startswith(("zh", "cn", "中文")):
-            project_queries.extend([f"{work} 剧情 {character}", f"{work} 角色剧情 {character}", f"{work} 官方视频 {character}"])
-        if language.lower().startswith(("ja", "jp", "日")) or character_type in {"anime", "game", "vtuber"}:
-            project_queries.extend([f"{work} 公式動画 {character}", f"{work} ストーリー {character}", f"{work} キャラコミュ {character}"])
+        if wants_chinese(language):
+            project_queries.extend([
+                f"{work} 萌娘百科 {character}",
+                f"site:zh.moegirl.org.cn {work} {character}",
+                f"{work} 剧情 {character}",
+                f"{work} 角色剧情 {character}",
+                f"{work} 官方视频 {character}",
+            ])
+        if wants_japanese(language, character_type):
+            project_queries.extend([
+                f"{work} 公式動画 {character}",
+                f"{work} ストーリー {character}",
+                f"{work} キャラコミュ {character}",
+            ])
         queries.extend(project_queries)
     return list(dict.fromkeys(q for q in queries if q.strip()))
 
 
-def write_markdown(path: Path, rows: Iterable[dict]) -> None:
+def write_markdown(path: Path, rows: Iterable[dict[str, object]]) -> None:
     lines = [
         "# Candidate Sources",
         "",
         "These are candidates only. Confirm sources before extraction.",
         "",
-        "| Decision | Project | Project Type | Title | Type | Layer | Value | Risk | URL |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Decision | Project | Project Type | Title | Type | Layer | Language | Value | Risk | URL |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for row in rows:
+        safe = {k: str(v).replace("|", "/") for k, v in row.items()}
         lines.append(
-            "| {decision} | {project} | {project_type} | {title} | {source_type} | {suggested_layer} | {likely_value} | {risk} | {url} |".format(
-                **{k: str(v).replace("|", "/") for k, v in row.items()}
+            "| {decision} | {project} | {project_type} | {title} | {source_type} | {suggested_layer} | {language} | {likely_value} | {risk} | {url} |".format(
+                **safe
             )
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -182,7 +216,7 @@ def main() -> int:
     out_dir = Path(args.out) if args.out else Path("work") / char_id / "sources"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    rows: list[dict] = []
+    rows: list[dict[str, object]] = []
     for url in args.url:
         rows.append(candidate(url, url, "user-provided", user_provided=True, project=project, project_type=project_type))
 
@@ -196,10 +230,10 @@ def main() -> int:
             search_url = "https://www.google.com/search?q=" + urllib.parse.quote(query)
             rows.append(candidate(f"Manual search: {query}", search_url, query, project=project, project_type=project_type))
 
-    deduped: list[dict] = []
+    deduped: list[dict[str, object]] = []
     seen = set()
     for row in rows:
-        key = row["url"].split("#", 1)[0]
+        key = str(row["url"]).split("#", 1)[0]
         if key in seen:
             continue
         seen.add(key)

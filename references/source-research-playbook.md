@@ -10,6 +10,7 @@ game, anime, manga, novel, or project pack.
 - `transcript`: video subtitles, livestream transcript, gameplay text extraction, dialogue dump.
 - `user-provided`: user notes, private settings, supplied files, supplied URLs.
 - `secondary`: wiki pages, encyclopedias, sourced summaries, episode summaries.
+- `moegirl`: 萌娘百科. Treat it as a high-value Chinese ACG secondary source for Chinese names, aliases, localized terminology, project orientation, and source navigation. Do not treat unsourced claims as canon.
 - `fan-analysis`: essays, discussions, theory posts, unsourced summaries.
 - `simulation`: generated practice dialogue or world-simulation output.
 
@@ -27,6 +28,23 @@ Recommendations:
 - `optional`: useful but not essential.
 - `needs-user-judgment`: unclear version, fan interpretation, private setting conflict, or sensitive source.
 - `reject`: irrelevant, duplicated, low trust, inaccessible, or misleading.
+
+## Chinese ACG Source: Moegirl
+
+When the user is Chinese or the character belongs to an ACG project, include
+萌娘百科 in candidate discovery when available:
+
+- search `角色名 作品名 萌娘百科`
+- search `site:zh.moegirl.org.cn 角色名 作品名`
+- use it to confirm Chinese names, aliases, common translations, project terms, and relationship labels
+- cross-check important identity, timeline, and personality claims against official/canon sources
+
+Name and term policy:
+
+- Prefer names and aliases already used by reliable Chinese sources such as official Chinese releases, official localized pages, 萌娘百科, and widely accepted Chinese wiki pages.
+- Do not freely translate, machine-translate, or invent Chinese names for characters, units, places, skills, episodes, songs, or projects.
+- If no reliable Chinese name exists, keep the original name and mark the Chinese rendering as `needs-user-confirmation`.
+- When Chinese sources disagree, show the variants to the user instead of picking silently.
 
 ## Project-First Search
 

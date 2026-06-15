@@ -27,13 +27,16 @@ def score(row: dict) -> tuple[int, list[str]]:
     if source_type in DISCOVERY_ONLY:
         points -= 18
         reasons.append("discovery-entry-not-evidence")
-    if source_type == "youtube-video" or any(x in text for x in ["bilibili", "transcript", "voice", "台词", "セリフ"]):
+    if source_type == "youtube-video" or any(x in text for x in ["bilibili", "transcript", "voice", "台词", "セリフ", "ボイス"]):
         points += 18
         reasons.append("voice-or-transcript-signal")
-    if any(x in text for x in ["wiki", "moegirl", "fandom", "wikipedia", "pixiv"]):
+    if source_type == "moegirl" or any(x in text for x in ["萌娘百科", "moegirl"]):
+        points += 25
+        reasons.append("chinese-acg-reference-and-name-source")
+    if any(x in text for x in ["wiki", "fandom", "wikipedia", "pixiv", "百科"]):
         points += 10
         reasons.append("summary-source")
-    if any(x in text for x in ["forum", "reddit", "tieba", "blog", "analysis"]):
+    if any(x in text for x in ["forum", "reddit", "tieba", "blog", "analysis", "论坛", "贴吧"]):
         points -= 10
         reasons.append("fan-analysis-risk")
     if re.search(r"google\.com/search|duckduckgo\.com|youtube\.com/results", text):

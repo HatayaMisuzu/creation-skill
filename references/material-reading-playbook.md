@@ -35,6 +35,9 @@ world boundary, scene response, safety boundary, gap.
 ## Language Handling
 
 - Do not translate source nuance falsely.
+- For character names, person names, project terms, units, places, songs, skills, and episode titles, prefer established Chinese names from reliable Chinese sources: official Chinese localization first, then high-value Chinese ACG references such as 萌娘百科, then other sourced Chinese wikis.
+- Do not freely translate, machine-translate, or invent names. If no reliable Chinese name is found, keep the original spelling and mark the Chinese rendering as `needs-user-confirmation`.
+- If Chinese sources disagree on a name, record all major variants and ask the user which one to use.
 - If Japanese/English material is used for voice, preserve only short catchphrases, honorifics, titles, or names when useful.
 - Main Chinese-user outputs stay Chinese.
 - Mark uncertain translations as low confidence or request user confirmation.

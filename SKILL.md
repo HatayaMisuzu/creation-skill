@@ -32,6 +32,7 @@ any other runtime unless the user explicitly asks.
 ## Core Defaults
 
 - Match the user's current language; for Chinese users, write main replies in Chinese even when sources are Japanese or English.
+- For names and proper nouns, prefer established Chinese names from official Chinese sources and high-value Chinese ACG references such as Moegirl / zh.moegirl.org.cn. Do not invent translations; keep the original name and ask when uncertain.
 - Keep `safety_boundary: enabled` unless the user explicitly chooses `relaxed` or `disabled`.
 - Treat relationship networks as internal context; do not make the character proactively mention other characters unless the user or scene triggers them.
 - Keep project simulation frontstage-only: never show numeric deltas, debug labels, backend state, speaker schedules, or scene-focus analysis in user-facing prose.
@@ -63,6 +64,7 @@ Use for web search, user-provided links, YouTube/channel/video lists, wiki pages
 official pages, local files, and source triage.
 
 - Model must identify source scope: `character-specific`, `project-level`, `relationship`, `worldbuilding`, `fan-analysis`, or `low-value`.
+- For Chinese ACG work, include Moegirl / zh.moegirl.org.cn when available, especially for Chinese names, aliases, localized terms, and project orientation.
 - Use scripts when many URLs/files must be collected or normalized.
 - Without scripts, summarize each source with title, URL/path, source layer, likely value, risk, and recommendation.
 - Show the user a source review table before deep extraction.
