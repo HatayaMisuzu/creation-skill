@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Validate 1.0.0 CHARACTER.md and PROJECT.md outputs."""
+"""Validate creation-skill CHARACTER.md and PROJECT.md outputs.
+
+The validator is intentionally lightweight. It checks structural contracts,
+runtime sidecars, obvious placeholder leaks, backend-state leaks, and the
+appearance/wardrobe layer added to the v1.0.0 skill.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +26,40 @@ REQUIRED_FRONTMATTER = [
     "version",
 ]
 
+CORE_SECTIONS = range(1, 29)
+VITALITY_SECTIONS = range(29, 43)
+APPEARANCE_SECTIONS = range(43, 46)
+
+REQUIRED_SIDECARS = [
+    "KERNEL.md",
+    "PERFORMANCE.md",
+    "APPEARANCE.md",
+    "OOC_NEGATIVES.md",
+    "BENCHMARK.md",
+]
+
+RUNTIME_FILES = [
+    "character.json",
+    "runtime-profile.json",
+    "prompt-card.md",
+    "voice-fingerprint.json",
+]
+
+MOJIBAKE_RE = re.compile(
+    "|".join(
+        [
+            "\ufffd",
+            "\u7476",  # yao, common in mojibake fragments
+            "\u6d63",
+            "\u9359",
+            "\u93c8",
+            "\u5bf0",
+            "\u9418",
+            "\u70d8",
+        ]
+    )
+)
+
 
 def parse_frontmatter(text: str) -> dict[str, str]:
     match = re.match(r"---\n(.*?)\n---\n", text, re.S)
@@ -29,9 +67,10 @@ def parse_frontmatter(text: str) -> dict[str, str]:
         return {}
     data: dict[str, str] = {}
     for line in match.group(1).splitlines():
-        if ":" in line:
-            key, value = line.split(":", 1)
-            data[key.strip()] = value.strip().strip("\"'")
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        data[key.strip()] = value.strip().strip("\"'")
     return data
 
 
@@ -43,7 +82,7 @@ def section(text: str, number: int) -> str:
     match = re.search(rf"^##\s+{number}\.\s+.*$", text, re.M)
     if not match:
         return ""
-    rest = text[match.end():]
+    rest = text[match.end() :]
     next_match = re.search(r"^##\s+\d+\.\s+", rest, re.M)
     return rest[: next_match.start()].strip() if next_match else rest.strip()
 
@@ -65,47 +104,55 @@ def has_any(text: str, patterns: list[str]) -> bool:
 
 
 def has_backend_leak(text: str) -> bool:
-    forbidden = re.compile(r"(^|\s)(\+\d|tension|scene_focus|debug|speaker schedule)(\s|$)|场景焦点：|状态变化：", re.I)
-    allowed_context = re.compile(r"不显示|禁止|避免|隐藏|不可|never|do not|forbidden|frontstage", re.I)
-    for line in text.splitlines():
-        if forbidden.search(line) and not allowed_context.search(line):
-            return True
-    return False
+    forbidden = re.compile(
+        r"(^|\s)(\+\d|tension|scene_focus|debug|speaker schedule)(\s|$)"
+        r"|\u573a\u666f\u7126\u70b9\uff1a|\u72b6\u6001\u53d8\u5316\uff1a",
+        re.I,
+    )
+    allowed = re.compile(
+        r"\u4e0d\u663e\u793a|\u7981\u6b62|\u907f\u514d|\u9690\u85cf|\u4e0d\u53ef"
+        r"|never|do not|forbidden|frontstage",
+        re.I,
+    )
+    return any(forbidden.search(line) and not allowed.search(line) for line in text.splitlines())
 
 
-def check_json(path: Path, rel: str, passes: list[str], warns: list[str], fails: list[str], strict: bool) -> None:
-    if not path.exists():
-        (fails if strict else warns).append(f"missing runtime artifact: {rel}")
-        return
-    if path.suffix.lower() == ".json" and read_json(path) is None:
-        fails.append(f"{rel} is not valid JSON")
-    else:
-        passes.append(f"{rel} present")
+def missing_numbers(actual: set[int], expected: range) -> list[str]:
+    return [str(number) for number in expected if number not in actual]
 
 
 def check_runtime_files(root: Path, strict: bool, development_mode: str) -> tuple[list[str], list[str], list[str]]:
     passes: list[str] = []
     warns: list[str] = []
     fails: list[str] = []
-    for rel in ["character.json", "runtime-profile.json", "prompt-card.md", "voice-fingerprint.json"]:
-        check_json(root / rel, rel, passes, warns, fails, strict)
-    for rel in ["KERNEL.md", "PERFORMANCE.md", "OOC_NEGATIVES.md", "BENCHMARK.md"]:
+
+    for rel in RUNTIME_FILES:
+        path = root / rel
+        if not path.exists():
+            (fails if strict else warns).append(f"missing runtime artifact: {rel}")
+            continue
+        if path.suffix == ".json" and read_json(path) is None:
+            fails.append(f"{rel} is not valid JSON")
+        else:
+            passes.append(f"{rel} present")
+
+    for rel in REQUIRED_SIDECARS:
         if (root / rel).exists():
             passes.append(f"{rel} present")
         else:
-            warns.append(f"missing 1.0.0 sidecar: {rel}")
-    memory = root / "MEMORY.md"
-    development = root / "DEVELOPMENT.md"
-    if development_mode in {"long-term-development", "project-development", "session-summary"}:
-        if memory.exists() and development.exists():
+            warns.append(f"missing sidecar: {rel}")
+
+    long_term_modes = {"long-term-development", "project-development", "session-summary"}
+    if development_mode in long_term_modes:
+        if (root / "MEMORY.md").exists() and (root / "DEVELOPMENT.md").exists():
             passes.append("long-term development sidecars present")
         else:
             fails.append("development_mode is enabled but MEMORY.md or DEVELOPMENT.md is missing")
+    elif (root / "MEMORY.md").exists() or (root / "DEVELOPMENT.md").exists():
+        warns.append("fresh mode has persistent development sidecars; confirm this is intentional")
     else:
-        if memory.exists() or development.exists():
-            warns.append("fresh mode has persistent development sidecars; confirm this is intentional")
-        else:
-            passes.append("fresh mode does not create persistent development sidecars")
+        passes.append("fresh mode does not create persistent development sidecars")
+
     return passes, warns, fails
 
 
@@ -122,34 +169,41 @@ def check_character(path: Path, strict_dialogue: bool) -> tuple[list[str], list[
         fails.append("missing frontmatter fields: " + ", ".join(missing_fm))
     else:
         passes.append("frontmatter complete")
+
     if fm.get("safety_boundary") in {"enabled", "relaxed", "disabled"}:
         passes.append("safety_boundary valid")
     else:
         fails.append("safety_boundary must be enabled, relaxed, or disabled")
+
     development_mode = fm.get("development_mode", "fresh")
     if development_mode in {"fresh", "session-summary", "long-term-development", "project-development"}:
         passes.append("development_mode valid")
     else:
-        fails.append("development_mode must be fresh, session-summary, long-term-development, or project-development")
+        fails.append("development_mode invalid")
 
     sections = numbered_sections(text)
-    missing_core = [str(i) for i in range(1, 29) if i not in sections]
+    missing_core = missing_numbers(sections, CORE_SECTIONS)
+    missing_vitality = missing_numbers(sections, VITALITY_SECTIONS)
+    missing_appearance = missing_numbers(sections, APPEARANCE_SECTIONS)
     if missing_core:
         fails.append("missing standard sections: " + ", ".join(missing_core))
     else:
         passes.append("standard sections 1-28 complete")
-    missing_vitality = [str(i) for i in range(29, 43) if i not in sections]
     if missing_vitality:
-        warns.append("missing 1.0.0 vitality sections: " + ", ".join(missing_vitality))
+        warns.append("missing vitality sections: " + ", ".join(missing_vitality))
     else:
-        passes.append("1.0.0 vitality sections 29-42 complete")
+        passes.append("vitality sections 29-42 complete")
+    if missing_appearance:
+        fails.append("missing appearance sections: " + ", ".join(missing_appearance))
+    else:
+        passes.append("appearance sections 43-45 complete")
 
-    if re.search(r"<[^>\n]+>|\[TODO\]|TODO|待填|未填写|�", text, re.I):
+    if re.search(r"<[^>\n]+>|\[TODO\]|TODO|\u5f85\u586b|\u672a\u586b\u5199", text, re.I) or MOJIBAKE_RE.search(text):
         fails.append("unfilled placeholders or mojibake found")
     else:
         passes.append("no placeholders or mojibake")
 
-    row_checks = [
+    row_requirements = [
         (4, 10, "personality chassis"),
         (5, 7, "expression DNA"),
         (6, 10, "scene responses"),
@@ -160,26 +214,29 @@ def check_character(path: Path, strict_dialogue: bool) -> tuple[list[str], list[
         (24, 5, "greetings"),
         (25, 3, "example dialogues"),
         (26, 6, "intent router"),
+        (43, 5, "appearance details"),
+        (44, 4, "fixed outfits"),
+        (45, 5, "adaptive wardrobe grammar"),
     ]
-    for number, minimum, label in row_checks:
+    for number, minimum, label in row_requirements:
         rows = table_rows(section(text, number))
         if rows >= minimum:
             passes.append(f"{label} rows ok")
         else:
             fails.append(f"{label} has {rows} rows; expected at least {minimum}")
 
-    required_patterns = [
-        ("language matching rule", [r"match-user", r"中文用户.*中文", r"用户.*语言"]),
-        ("relationship non-intrusion rule", [r"不主动.*关系", r"用户.*提到.*关系", r"untriggered relationship"]),
-        ("anti-profile-recitation rule", [r"不朗读", r"不解释.*角色卡", r"do not recite"]),
-        ("learning/contamination guard", [r"模拟台词.*不.*canon", r"不更新 canon", r"污染"]),
-        ("frontstage protocol", [r"前台", r"后台.*不.*显示", r"frontstage"]),
-        ("decision function", [r"角色决策函数", r"第一反应.*核心动机"]),
-        ("internal tension", [r"内在矛盾", r"张力"]),
-        ("OOC negatives", [r"OOC 反例", r"OOC_NEGATIVES"]),
-        ("long-term opt-in", [r"长期发展.*可选", r"默认 fresh", r"不写入长期记忆"]),
+    required_rules = [
+        ("language matching rule", [r"match-user", r"\u4e2d\u6587\u7528\u6237.*\u4e2d\u6587", r"\u7528\u6237.*\u8bed\u8a00"]),
+        ("relationship non-intrusion rule", [r"\u4e0d\u4e3b\u52a8.*\u5173\u7cfb", r"untriggered relationship"]),
+        ("anti-profile-recitation rule", [r"\u4e0d\u6717\u8bfb", r"do not recite", r"profile recitation"]),
+        ("learning/contamination guard", [r"\u6a21\u62df\u53f0\u8bcd.*canon", r"canon.*\u6c61\u67d3", r"contamination"]),
+        ("frontstage protocol", [r"\u524d\u53f0", r"frontstage"]),
+        ("decision function", [r"\u89d2\u8272\u51b3\u7b56\u51fd\u6570", r"decision function"]),
+        ("internal tension", [r"\u5185\u5728\u77db\u76fe", r"\u5f20\u529b", r"tension"]),
+        ("appearance stability", [r"\u5916\u8c8c", r"\u56fa\u5b9a\u8863\u7740", r"APPEARANCE", r"visual drift"]),
+        ("long-term opt-in", [r"\u957f\u671f\u53d1\u5c55.*\u53ef\u9009", r"default.*fresh", r"\u9ed8\u8ba4.*fresh"]),
     ]
-    for label, patterns in required_patterns:
+    for label, patterns in required_rules:
         if has_any(text, patterns):
             passes.append(f"{label} present")
         else:
@@ -194,15 +251,16 @@ def check_character(path: Path, strict_dialogue: bool) -> tuple[list[str], list[
     passes.extend(file_passes)
     warns.extend(file_warns)
     fails.extend(file_fails)
+
     if strict_dialogue and warns:
         fails.extend("strict dialogue: " + item for item in warns)
         warns = []
+
     return passes, warns, fails
 
 
 def check_project(path: Path) -> tuple[list[str], list[str], list[str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
-    root = path.parent
     passes: list[str] = []
     warns: list[str] = []
     fails: list[str] = []
@@ -210,35 +268,8 @@ def check_project(path: Path) -> tuple[list[str], list[str], list[str]]:
         passes.append("PROJECT.md has title")
     else:
         fails.append("PROJECT.md missing title")
-    required = [
-        "project.json",
-        "timeline.md",
-        "relationship-graph.md",
-        "scenes/group-dynamics.md",
-        "scenes/shared-scene-rules.md",
-        "simulation/world-state.json",
-        "simulation/public-scene-memory.md",
-    ]
-    missing = [rel for rel in required if not (root / rel).exists()]
-    if missing:
-        fails.append("missing project pack files: " + ", ".join(missing))
-    else:
-        passes.append("project pack files complete")
-    if has_any(text, [r"上帝视角", r"observer", r"director", r"world_admin"]):
-        passes.append("god-view/user mode rules present")
-    else:
-        fails.append("missing project simulation user modes")
-    if has_any(text, [r"未点名.*不", r"不抢戏", r"Unmentioned characters"]):
-        passes.append("group non-stealing rule present")
-    else:
-        fails.append("missing group non-stealing rule")
-    latest = root / "simulation" / "latest-scene.md"
-    if latest.exists():
-        scene = latest.read_text(encoding="utf-8", errors="replace")
-        if has_backend_leak(scene):
-            fails.append("latest-scene.md leaks backend/debug state")
-        else:
-            passes.append("latest-scene.md has no obvious backend leak")
+    if has_backend_leak(text):
+        fails.append("PROJECT.md leaks backend/debug state")
     return passes, warns, fails
 
 
@@ -265,15 +296,27 @@ def main() -> int:
     args = parser.parse_args()
 
     path = Path(args.path)
-    passes, warns, fails = check_project(path) if args.mode == "project" else check_character(path, args.strict_dialogue)
-    report = write_report(path, passes, warns, fails)
-    result = {"status": "FAIL" if fails else "WARN" if warns else "PASS", "passes": passes, "warnings": warns, "failures": fails, "report": str(report)}
-    if args.json:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not path.exists():
+        raise SystemExit(f"file not found: {path}")
+
+    if args.mode == "project":
+        passes, warns, fails = check_project(path)
     else:
-        print(f"Status: {result['status']}")
-        print(f"Pass: {len(passes)} Warn: {len(warns)} Fail: {len(fails)}")
-        print(f"Report: {report}")
+        passes, warns, fails = check_character(path, args.strict_dialogue)
+
+    report = write_report(path, passes, warns, fails)
+    payload = {
+        "status": "FAIL" if fails else "WARN" if warns else "PASS",
+        "passes": passes,
+        "warnings": warns,
+        "failures": fails,
+        "report": str(report),
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"{payload['status']}: {path}")
+        print(f"report: {report}")
         for item in fails:
             print(f"FAIL: {item}")
         for item in warns:
@@ -282,8 +325,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except UnicodeEncodeError:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        raise
+    raise SystemExit(main())

@@ -33,7 +33,7 @@ able to continue manually when they fail or are unavailable.
 
 - `render_character.py`
   - Use when an evidence pack should be rendered into standard files.
-  - In 1.0.0 it can also emit `KERNEL.md`, `PERFORMANCE.md`, `OOC_NEGATIVES.md`, and `BENCHMARK.md`; `MEMORY.md` and `DEVELOPMENT.md` are emitted only when long-term development is explicitly enabled.
+  - In 1.0.0 it can also emit `KERNEL.md`, `PERFORMANCE.md`, `APPEARANCE.md`, `OOC_NEGATIVES.md`, and `BENCHMARK.md`; `MEMORY.md` and `DEVELOPMENT.md` are emitted only when long-term development is explicitly enabled.
   - Manual fallback: write `CHARACTER.md` from the template and add sidecars only when they help runtime quality.
 
 - `render_prompt_card.py`

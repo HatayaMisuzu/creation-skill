@@ -33,6 +33,7 @@ any other runtime unless the user explicitly asks.
 
 - Match the user's current language; for Chinese users, write main replies in Chinese even when sources are Japanese or English.
 - For names and proper nouns, prefer established Chinese names from official Chinese sources and high-value Chinese ACG references such as Moegirl / zh.moegirl.org.cn. Do not invent translations; keep the original name and ask when uncertain.
+- For appearance and wardrobe, preserve stable visual identity first. Fixed outfits may have several named sets; adaptive styling is allowed only inside the character's style grammar and scene/relationship boundaries.
 - Keep `safety_boundary: enabled` unless the user explicitly chooses `relaxed` or `disabled`.
 - Treat relationship networks as internal context; do not make the character proactively mention other characters unless the user or scene triggers them.
 - Keep project simulation frontstage-only: never show numeric deltas, debug labels, backend state, speaker schedules, or scene-focus analysis in user-facing prose.
@@ -92,10 +93,12 @@ Use for generating a new `CHARACTER.md` or improving a role profile.
 - Model must derive personality from evidence, not from generic archetypes.
 - Target-character lines shape expression DNA; official/canon sources shape identity and world facts; other evaluations shape social perception; fan analysis remains low weight.
 - Include language mechanism, relationship non-intrusion, safety boundary, state machine, phase, self-check rules, decision function, internal tension, OOC negatives, emotion gradients, and non-verbal expression.
-- Output `CHARACTER.md`; optionally output `KERNEL.md`, `PERFORMANCE.md`, `OOC_NEGATIVES.md`, `BENCHMARK.md`, `character.json`, `prompt-card.md`, and `voice-fingerprint.json`.
+- Include appearance details, fixed outfits, adaptive wardrobe style grammar, and forbidden visual drift when visual identity matters.
+- Output `CHARACTER.md`; optionally output `KERNEL.md`, `PERFORMANCE.md`, `APPEARANCE.md`, `OOC_NEGATIVES.md`, `BENCHMARK.md`, `character.json`, `prompt-card.md`, and `voice-fingerprint.json`.
 
 Read: `references/character-distillation-guide.md`,
 `references/character-vitality-guide.md`,
+`references/appearance-wardrobe-guide.md`,
 `references/universal-character-template.md`, and
 `references/character-authoring-checklist.md`.
 
@@ -192,6 +195,7 @@ Core character outputs:
 character-cards/<id>/CHARACTER.md
 character-cards/<id>/KERNEL.md
 character-cards/<id>/PERFORMANCE.md
+character-cards/<id>/APPEARANCE.md
 character-cards/<id>/OOC_NEGATIVES.md
 character-cards/<id>/BENCHMARK.md
 character-cards/<id>/character.json
@@ -252,6 +256,7 @@ Read only the files needed for the current task:
 - `references/material-reading-playbook.md` - material reading and speaker/evidence tagging.
 - `references/character-distillation-guide.md` - personality, voice, phase, relationship, and boundary distillation.
 - `references/character-vitality-guide.md` - decision function, internal tension, emotion gradients, non-verbal expression, and OOC negatives.
+- `references/appearance-wardrobe-guide.md` - visual identity, fixed outfits, adaptive styling grammar, and forbidden visual drift.
 - `references/long-term-development-guide.md` - optional memory/development mode and canon-safe evolution.
 - `references/universal-character-template.md` - target `CHARACTER.md` structure.
 - `references/character-authoring-checklist.md` - pre-delivery writing checklist.
